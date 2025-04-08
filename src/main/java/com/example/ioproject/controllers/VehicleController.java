@@ -19,15 +19,15 @@ public class VehicleController {
     private VehicleService vehicleService;
 
     // Endpoint: Pobierz listę pojazdów (dla wszystkich autoryzowanych użytkowników)
-    @GetMapping
-    @PreAuthorize("hasRole('USER') or hasRole('MODERATOR') or hasRole('ADMIN')")
+    @GetMapping("/get")
+    // @PreAuthorize("hasRole('USER') or hasRole('MODERATOR') or hasRole('ADMIN')")
     public List<Vehicle> getAllVehicles() {
         return vehicleService.getAllVehicles();
     }
 
     // Endpoint: Pobierz pojazd po ID (dla wszystkich autoryzowanych użytkowników)
-    @GetMapping("/{id}")
-    @PreAuthorize("hasRole('USER') or hasRole('MODERATOR') or hasRole('ADMIN')")
+    @GetMapping("/get/{id}")
+    // @PreAuthorize("hasRole('USER') or hasRole('MODERATOR') or hasRole('ADMIN')")
     public Optional<Vehicle> getVehicleById(@PathVariable Long id) {
         return vehicleService.getVehicleById(id);
     }
