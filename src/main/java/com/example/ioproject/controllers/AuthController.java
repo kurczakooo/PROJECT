@@ -3,6 +3,7 @@ package com.example.ioproject.controllers;
 import com.example.ioproject.models.ERole;
 import com.example.ioproject.models.Role;
 import com.example.ioproject.models.User;
+import com.example.ioproject.payload.request.GoogleRequest;
 import com.example.ioproject.payload.request.LoginRequest;
 import com.example.ioproject.payload.request.SignupRequest;
 import com.example.ioproject.payload.response.JwtResponse;
@@ -10,6 +11,7 @@ import com.example.ioproject.payload.response.MessageResponse;
 import com.example.ioproject.repository.RoleRepository;
 import com.example.ioproject.repository.UserRepository;
 import com.example.ioproject.security.jwt.JwtUtils;
+import com.example.ioproject.security.services.GoogleAuthService;
 import com.example.ioproject.security.services.UserDetailsImpl;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +27,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -44,6 +48,9 @@ public class AuthController {
 
   @Autowired
   JwtUtils jwtUtils;
+
+  @Autowired
+  GoogleAuthService googleAuthService;
 
   @PostMapping("/login")
   public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
@@ -87,5 +94,43 @@ public class AuthController {
     userRepository.save(user);
 
     return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
+  }
+
+  @PostMapping("/google")
+  public ResponseEntity<?> authWithGoogle(@Valid @RequestBody GoogleRequest request){
+    var payload = googleAuthService.verify(request.getIdToken());
+    if (payload == null) {
+      return ResponseEntity.badRequest().body(new MessageResponse("Invalid Google ID token."));
+    }
+
+    String email = (String) payload.get("email");
+    String name = (String) payload.get("name");
+    boolean emailVerified = Boolean.TRUE.equals(payload.get("emailVerified"));
+
+    if (!emailVerified) {
+      return ResponseEntity.badRequest().body(new MessageResponse("Email is not verified by Google."));
+    }
+
+    User user = userRepository.findByEmail(email).orElse(null);
+    if (user == null) {
+      user = new User(name, email, ""); // puste hasło
+      Role userRole = roleRepository.findByName(ERole.ROLE_USER)
+              .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+      user.setRoles(Set.of(userRole));
+      userRepository.save(user);
+    }
+
+    UserDetailsImpl userDetails = UserDetailsImpl.build(user);
+    UsernamePasswordAuthenticationToken authToken =
+            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+    SecurityContextHolder.getContext().setAuthentication(authToken);
+    String jwt = jwtUtils.generateJwtToken(authToken);
+
+    List<String> roles = userDetails.getAuthorities().stream()
+            .map(r -> r.getAuthority())
+            .collect(Collectors.toList());
+
+    return ResponseEntity
+            .ok(new JwtResponse(jwt, user.getId(), user.getUsername(), user.getEmail(), roles));
   }
 }
