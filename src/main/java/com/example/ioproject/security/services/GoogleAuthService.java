@@ -16,14 +16,16 @@ public class GoogleAuthService {
 
     public GoogleAuthService() {
         this.verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new GsonFactory())
-                .setAudience(Collections.singletonList("61322257566-9elqgssfuo4id97ej8t4sfjbt1egnqq0.apps.googleusercontent.com"))
+                .setAudience(Collections.singletonList("407408718192.apps.googleusercontent.com")) // musi byc client_id z poprawnego klienta
                 .build();
     }
 
     public IdToken.Payload verify(String frontendTokenString) {
         try {
             GoogleIdToken idToken = verifier.verify(frontendTokenString);
+//            System.out.println("Verifying token: " + frontendTokenString);
             if (idToken != null) {
+//                System.out.println("Token payload: " + idToken.getPayload());
                 return idToken.getPayload();
             }
         } catch (Exception e) {

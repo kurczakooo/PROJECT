@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
@@ -105,15 +106,18 @@ public class AuthController {
 
     String email = (String) payload.get("email");
     String name = (String) payload.get("name");
-    boolean emailVerified = Boolean.TRUE.equals(payload.get("emailVerified"));
+    boolean emailVerified = Boolean.TRUE.equals(payload.get("email_verified"));
 
     if (!emailVerified) {
       return ResponseEntity.badRequest().body(new MessageResponse("Email is not verified by Google."));
     }
 
+    System.out.println(payload);
+
     User user = userRepository.findByEmail(email).orElse(null);
     if (user == null) {
-      user = new User(name, email, ""); // puste hasło
+      String randomPassword = UUID.randomUUID().toString();  // wygeneruj randomowe haslo dla uzytkownika autoryzujacego sie przez google
+      user = new User(name, email, randomPassword);
       Role userRole = roleRepository.findByName(ERole.ROLE_USER)
               .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
       user.setRoles(Set.of(userRole));
